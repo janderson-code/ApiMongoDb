@@ -1,15 +1,28 @@
 using ApiMongoDb.Models;
 using ApiMongoDb.Services;
+using MongoDB.Driver;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.WebHost.UseUrls("http://0.0.0.0:8080"); 
+
 builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddSwaggerGen();
+
 builder.Services.Configure<BookStoreDatabaseSettings>(
     builder.Configuration.GetSection("BookStoreDatabase"));
+
 builder.Services.AddSingleton<BooksService>();
 
 var app = builder.Build();
+
+var mongoConnectionString = builder.Configuration.GetSection("BookStoreDatabase")
+    .Get<BookStoreDatabaseSettings>();
+
+var client = new MongoClient(mongoConnectionString!.ConnectionString);
+
+var database = client.GetDatabase("BookStore");
+
+await SeedDatabaseAsync(database);
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -66,3 +79,26 @@ app.MapDelete("/api/books/{id:length(24)}", async (string id) =>
 
 
 app.Run();
+
+async Task SeedDatabaseAsync(IMongoDatabase database)
+{
+    var collectionName = "Books";
+    var collectionExists = (await database.ListCollectionNamesAsync())
+        .ToList()
+        .Contains(collectionName);
+
+    if (!collectionExists)
+    {
+        await database.CreateCollectionAsync(collectionName);
+
+        var booksCollection = database.GetCollection<Book>(collectionName);
+        var books = new List<Book>
+        {
+            new Book { BookName = "Design Patterns", Price = 54.93M, Category = "Computers", Author = "Ralph Johnson" },
+            new Book { BookName = "Clean Code", Price = 43.15M, Category = "Computers", Author = "Robert C. Martin" },
+            new Book { BookName = "Livro de Teste", Price = 43.15M, Category = "Teste", Author = "Teste" }
+        };
+
+        await booksCollection.InsertManyAsync(books);
+    }
+}
