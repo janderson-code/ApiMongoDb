@@ -44,7 +44,7 @@ http://localhost:5000/api/books
 
 - Entrar no MongoDB
 ```bash
-docker exec -it mongo bash
+docker exec -it mongodb bash
 ```
 - Acessar o Mongo Shell
 ```bash
